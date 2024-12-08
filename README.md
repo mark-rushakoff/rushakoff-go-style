@@ -45,6 +45,10 @@ Ultimately, semantic linefeeds produce highly readable diffs,
 and reading commit history is something I do frequently.
 Semantic linefeeds also happen to be usually easily readable without any special editor settings.
 
+The rule in Go doc comments is that the first sentence begins with the name of the function, method, or type being documented.
+Another common mistake I notice is applying that rule to fields within a struct.
+For field doc comments, it is not necessary to repeat the field name.
+
 #### Package comments
 
 I expect every package to include a package comment.
@@ -160,8 +164,17 @@ Developers are much more likely to run the full set of tests when the tests are 
 
 ### Data race detector
 
-Make a habit of running your tests with the race detector enabled,
+Make a habit of running your tests with the [race detector](https://go.dev/doc/articles/race_detector) enabled,
 i.e. `go test -race`.
+
+In working on distributed systems in particular,
+aim to have some set of tests such that you run multiple in-process instances of your service.
+In this configuration with the race detector enabled,
+you will discover real data races that can occur in production --
+or sometimes you will at least discover global state that you may not have already known about.
+(Of course, testing this way is not exhaustive,
+and if you can afford to run an instance of your service with the race detector enabled,
+that is worth doing to discover other data model violations.)
 
 ### Testing frameworks
 
@@ -175,6 +188,29 @@ I tend to use testify in anything but the smallest projects,
 because I think it is one of the most likely testing packages
 that other contributors may have used before.
 But, I don't think it is wrong to use a different third party testing package.
+
+### Test packages
+
+For a package `foo` with a file `bar.go`, you would typically put your tests in `bar_test.go`.
+
+The [`testing` package documentation](https://pkg.go.dev/testing) clarifies:
+
+> The test file can be in the same package as the one being tested, or in a corresponding package with the suffix "`_test`".
+> If the test file is in the same package, it may refer to unexported identifiers within the package...
+> If the file is in a separate "`_test`" package, the package being tested must be imported explicitly and only its exported identifiers may be used.
+
+Conventional test-driven development wisdom recommends the latter --
+tests always go in the `_test`-suffixed package so that we are only testing the exported interface.
+
+If I find myself in the extremely rare situation where I need to test something that must not otherwise be exported,
+I will often name that file with the suffix `_internal_test.go` just to make it more clear that
+it is reaching into internals that we would typically not otherwise touch.
+
+On the other hand, if I have several unexported types with nontrivial behavior,
+and those types are complicated enough to warrant their own tests,
+at that point I will likely move the types to an `internal` package
+so that I can use them and test them as exported types,
+without letting other consumers access them.
 
 <!-- TODO:
 - prefer single long lived goroutine
