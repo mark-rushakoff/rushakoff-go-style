@@ -46,8 +46,10 @@ and reading commit history is something I do frequently.
 Semantic linefeeds also happen to be usually easily readable without any special editor settings.
 
 The rule in Go doc comments is that the first sentence begins with the name of the function, method, or type being documented.
-Another common mistake I notice is applying that rule to fields within a struct.
-For field doc comments, it is not necessary to repeat the field name.
+Another common mistake I notice is applying that rule to fields within a struct,
+or methods on an interface declaration.
+For those cases, it is not necessary to repeat the field name or interface method,
+but feel free to use them if it helps readability.
 
 #### Package comments
 
@@ -212,9 +214,72 @@ at that point I will likely move the types to an `internal` package
 so that I can use them and test them as exported types,
 without letting other consumers access them.
 
+## Errors
+
+My general point of view on errors in Go is that the author of the code
+must assist the users in understanding why an error occurred and how to resolve it.
+
+### Strong error types
+
+`fmt.Errorf` is often sufficient for a general indication of a failed operation.
+Suppose your function had to validate user input:
+something like `fmt.Errorf("foo values must be 6 alphanumeric characters; got %q", input)`
+tells the user exactly what was wrong.
+(Note also that we use `%q` here which will put quotes around the input,
+so an empty input will be an obvious empty string instead of a less obvious "did we get the whole error message?")
+
+But, if the caller may need to react to a specific error, prefer to use either:
+- a package-level `ErrFoo` error value typically constructed with `errors.New`,
+  if there is no contextual data to add -- for example,
+  `var ErrServerOverloaded = errors.New("server overloaded")
+- or a type satisyfing the `error` interface, if there is contextual information that can be extracted
+
+Callers that care about a specific error can use
+[`errors.As`](https://pkg.go.dev/errors#As) to check if an error matches a particular type,
+or [`errors.Is`](https://pkg.go.dev/errors#Is) to check if an error matches a particular value.
+
+### Wrapping
+
+Simply doing `_, err := somethingThatMayFail(); return err` is certainly more convenient to write,
+but when you have many calls in a stack that all propagate that one error,
+debugging becomes much more challenging.
+It might be easy to find that a function `foo` originated a particular error message,
+but when `foo` is called from dozens of other functions,
+the user may have to do a wide search to figure out which invocation is causing the operation to fail.
+
+Therefore, by default, I always wrap errors,
+e.g. `return fmt.Errorf("failed to persist foobar message: %w", err)`.
+
+Using this pattern may result in some kind of long error message, like
+`failed to write output: failed to persist foobar message: file /tmp/foobar.messages exceeds configured limit of 1024 bytes`;
+but all of that information gives a user fully sufficient information
+to identify most of, if not all of, the entire failing call stack.
+A programmer armed with that information does not need to waste time
+searching for where an error occurred.
+
+When applying this wrapping pattern, I try to avoid repeating the wrapped error messages.
+In terms of assisting other programmers,
+a repeated error message is better than no error message,
+but unique error messages are easily discovered.
+
+### Joined errors
+
+[`errors.Join`](https://pkg.go.dev/errors#Join) is a relatively new feature,
+being introduced in go 1.20,
+so not everyone is aware of its existence.
+
+Joined errors are very useful when multiple things can go wrong at once,
+and we can help the user by telling them what to fix all in one pass.
+It is very frustrating as a consumer to get a long sequence of "fix this one thing",
+look up how to fix it, run again, and get another "fix this one other thing."
+It is much more user friendly to get one error message saying to fix foo, bar, and baz.
+
+I most often use joined errors when there are multiple discrete input values to validate
+(such as in a configuration file),
+or when there are multiple required options in an options pattern.
+
 <!-- TODO:
 - prefer single long lived goroutine
-- error wrapping
 - prefer non-anonymous goroutines
 - supported versions of Go
 -->
