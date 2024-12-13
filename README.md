@@ -179,6 +179,27 @@ If a type starts only one background goroutine,
 a plain empty struct channel suffices to indicate a complete shutdown.
 Otherwise, a [`sync.WaitGroup`](https://pkg.go.dev/sync#WaitGroup) is appropriate.
 
+### Goroutines
+
+#### Prefer named functions
+
+Creating goroutines from anonymous functions
+(e.g. `go func() { /* do stuff */ }()`)
+is functionally fine.
+
+However, if a goroutine is going to be long-lived,
+the stack traces are significantly more readable when they are actual methods or functions.
+An anonymous function will be mentioned in the stack trace like `example.com/somepackage.Foo.func1`.
+
+But if you instead use a method or a declared function,
+the stack trace will instead use `example.com/somepackage.Foo.handleIncomingConnections`,
+which once again simplifies work for the person reading the stack trace.
+They may still have to go open the file to read what `handleIncomingConnections`
+is actually doing on the line in the stack trace,
+but at least they have the opportunity to make a judgement call
+on whether `handleIncomingConnections` is meaningful in the current debugging session,
+instead of being forced to look up what the anonymous function is doing.
+
 ## Tests
 
 ### Parallel tests
@@ -306,6 +327,5 @@ or when there are multiple required options in an options pattern.
 
 <!-- TODO:
 - prefer single long lived goroutine
-- prefer non-anonymous goroutines
 - supported versions of Go
 -->
