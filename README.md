@@ -45,11 +45,21 @@ Ultimately, semantic linefeeds produce highly readable diffs,
 and reading commit history is something I do frequently.
 Semantic linefeeds also happen to be usually easily readable without any special editor settings.
 
+#### Type comments
+
 The rule in Go doc comments is that the first sentence begins with the name of the function, method, or type being documented.
 Another common mistake I notice is applying that rule to fields within a struct,
 or methods on an interface declaration.
 For those cases, it is not necessary to repeat the field name or interface method,
 but feel free to use them if it helps readability.
+
+In documenting struct fields, I try to be overly clear about what keys and values are used in maps.
+A struct field declaration `inventory map[int]int` gives no clear guide to the first-time reader
+whether the keys are some kind of object ID, or maybe a particular inventory slot, etc.
+A better name is usually preferable,
+but if something like `equippedItemIDByInventorySlot` is too long,
+then an inline comment like `key: inventory slot, value: item ID`
+saves the reader from having to dig through the code to figure out the keys and values.
 
 #### Package comments
 
@@ -61,6 +71,22 @@ sooner or later many packages get multiple files.
 
 Keeping the package comment in a consistent `doc.go` file saves the effort
 of searching for it when it needs to be edited.
+
+### Inline comments
+
+I tend to fairly heavily use inline comments to document _intent_ in code.
+More subtle behavior is more likely to be documented,
+and obvious code is much less likely.
+
+I also explicitly document hardcoded values.
+If I had `const timeout = 500 * time.Millisecond`,
+I would either document it as "arbitrarily chosen" or "half a second seemed to work well in these conditions".
+Eventually, in distributed systems work, someone is going to come across values like that;
+it can save them significant time to know that there was no particular reason
+for splitting the data into 8 kilobyte chunks other than it sounded like a reasonable starting point.
+That is helpful context to allow further experimentation:
+either produce an updated guess, or have information on what data was considered
+when choosing that particular value.
 
 ## Package layout
 
