@@ -128,6 +128,21 @@ it makes sense to pull that into a separate test related package.
 Nest the new package under the source package, and name it to match the source package with a `test` suffix.
 The standard library does this with [`net/http/httptest`](https://pkg.go.dev/net/http/httptest).
 
+## Functions and methods
+
+### Arguments
+
+Context, per the `context` package documentation, should be the first argument.
+
+Structured logger arguments also contend for the first argument, but context takes precedence.
+I prefer the argument and the field to both be named `log` for consistency and brevity.
+
+My rule of thumb is that three arguments is reasonable,
+but probably at four and almost certainly at five,
+using a struct is preferable in order to effectively switch to named arguments.
+These structs usually have `Config`, not `Options`, in the name,
+as they more often are required configuration rather than optional.
+
 ## Concurrent Go code
 
 ### Mutexes
@@ -325,7 +340,32 @@ I most often use joined errors when there are multiple discrete input values to 
 (such as in a configuration file),
 or when there are multiple required options in an options pattern.
 
+## Allocations
+
+More often than not in my experience,
+the first encounter of high CPU usage in distributed systems programs
+is the Go garbage collector running more than anticipated.
+
+When attempting to write high performance systems,
+we have to be much more aware of what causes allocations,
+and what simple patterns we can apply to minimize allocations
+before we get to the point where we have to start memory profiling.
+
+### Pre-sizing slices and maps
+
+Every time we collect values into a map or a slice,
+pass a capacity to the `make` function.
+This small optimization has a zero cost to readability once you're used to it.
+
+A slice that has to grow its capacity will have to allocate new memory
+and then copy the elements into the new allocation.
+If a slice would otherwise grow many times,
+it is better to just do a single allocation at the start.
+
+Maps work differently but benefit similarly from avoiding dynamic growth.
+
 <!-- TODO:
+- structured logging
 - prefer single long lived goroutine
 - supported versions of Go
 -->
